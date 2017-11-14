@@ -1,0 +1,47 @@
+{
+  "name": "test-ts-express-decorator",
+  "version": "1.0.0",
+  "description": "",
+  "main": "app.ts",
+  "scripts": {
+    "build": "rm -rf dist/* && npm run tsc",
+    "coverage": "npm run test-cov && npm run test-remap",
+    "postinstall": "npm run build",
+    "tslint": "tslint ./*.ts ./lib/*.ts",
+    "test": "mocha --reporter spec --check-leaks --bail test/",
+    "tsc": "tsc  --project tsconfig.json",
+    "tsc:w": "tsc -w",
+    "start": "concurrently \"npm run tsc:w\" \"nodemon dist/app.js --ignore *.ts\""
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "ajv": "^5.3.0",
+    "body-parser": "^1.15.2",
+    "compression": "^1.6.2",
+    "cookie-parser": "^1.4.3",
+    "dotenv": "^4.0.0",
+    "express": "^4.14.0",
+    "express-session": "^1.14.2",
+    "loggly": "^1.1.1",
+    "method-override": "^2.3.6",
+    "moment": "^2.19.2",
+    "pg": "^7.4.0",
+    "pogi": "^2.5.1",
+    "ts-express-decorators": "^2.14.2",
+    "ts-httpexceptions": "^2.2.3",
+    "ts-json-properties": "^1.2.0",
+    "typescript": "^2.4.3",
+    "uuid": "^3.1.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.0.37",
+    "@types/node": "^8.0.13",
+    "chai": "^4.1.2",
+    "chai-http": "^3.0.0",
+    "concurrently": "^3.1.0",
+    "mocha": "^3.5.3",
+    "mocha-typescript": "^1.1.8",
+    "nodemon": "^1.11.0"
+  }
+}
