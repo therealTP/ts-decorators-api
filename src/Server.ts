@@ -1,5 +1,6 @@
 import * as Express from "express";
 import {$log} from "ts-log-debug";
+import { GlobalErrorHandlerMiddleware } from './middlewares/GlobalErrorHandlerMiddleware';
 import { GlobalAcceptMimesMiddleware, ServerLoader, ServerSettings } from "ts-express-decorators";
 import Path = require("path");
 // import "ts-express-decorators/ajv"; // import ajv ts.ed module
@@ -10,11 +11,12 @@ const rootDir = Path.resolve(__dirname);
     rootDir,
     acceptMimes: ["application/json"],
     mount: {
-        "/rest": `${rootDir}/controllers/**/*.js`,
+        "/api/v1": `${rootDir}/controllers/**/*.js`,
     },
     componentsScan: [
         `${rootDir}/services/**/**.js`,
-        `${rootDir}/models/**/**.js`
+        `${rootDir}/models/**/**.js`,
+        `${rootDir}/middlewares/**/**.js`
     ]
 })
 export class Server extends ServerLoader {
@@ -49,5 +51,9 @@ export class Server extends ServerLoader {
    
     public $onServerInitError(err){
         $log.error('Server encounter an error =>', err);
-    }    
+    }
+
+    public $afterRoutesInit() {
+        this.use(GlobalErrorHandlerMiddleware);
+    }
 }

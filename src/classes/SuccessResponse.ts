@@ -1,11 +1,12 @@
 import { IResponse } from './../interfaces/Response';
 
-export class SuccessResponse<T> implements IResponse {
+export class SuccessResponse implements IResponse {
     success: boolean;
     errors: null;
-    response: T | {results: T[]};
+    // response: T | {results: T[]};
+    response: {};
 
-    constructor(response: T | {results: T[]}) {
+    constructor(response: {}) {
         this.success = true;
         this.errors = null;
         this.response = response;

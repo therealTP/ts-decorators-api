@@ -12,27 +12,34 @@ import { logger } from './logger';
 * Generic function to generate error response, log, + respond
 *
 */
-const generateErrorAndLog = (code: string, details: string): UserError => {
+const generateError = (code: string, resource: string): UserError => {
+    const generalErrCode = "err.general_error";
+    if (!code) code = generalErrCode;
     // look up code's error message, if it exists:
-    const message = (errors[code] || "Unexpected error");
+    const message = (errors[code] || errors[generalErrCode]);
+    // TODO: add resource name to detail message associated w/ code
+    const detail = resource;
 
     // create user error from message + code:
-    const error = new UserError(message, code, details);
-
-    // log error
-    logger.log(error);
+    const error = new UserError(message, code, detail);
 
     return error;
 };
 
-const handleErrorResponse = (code: string, details: string, res: Response, status: number): void => {
-    const error = generateErrorAndLog(code, details);
+export const logAndThrowUserError = (code: string, details: string): void => {
+    const error = generateError(code, details);
 
-    // create error response
-    const errorResponse = new ErrorResponse([error]);
+    // log error
+    logger.log(error);
+    
+    // ERROR!
+    console.log("ERROR");
+
+    // throw error response
+    throw error;
 
     // send error response w/ default 500 status code (if no status)
-    res.status((status || 500)).json(errorResponse);
+    // res.status((status || 500)).json(errorResponse);
 };
 
 /*
@@ -40,13 +47,13 @@ const handleErrorResponse = (code: string, details: string, res: Response, statu
 */
 export let handleDbErrorResponse = (err: any, res: Response): void => {
     const details = parseDatabaseError(err.message);
-    handleErrorResponse("err.database_query_error", details, res, 500);
+    logAndThrowUserError("err.database_query_error", details);
 };
 
 export let handleDbConnectionError = (err: any): void => {
     const details = parseDatabaseError(err.message);
     // look up code's error message, if it exists:
-    generateErrorAndLog("err.database_connect_error", details);
+    logAndThrowUserError("err.database_connect_error", details);
 };
 
 const parseDatabaseError = (message: string) => {
@@ -62,13 +69,14 @@ export let handleValidationErrorMiddleware = (req: Request, res: Response, next:
 
     if (!errors.length) {
         // TODO: create details array w/ this:x
-        const details = errors.map(mapValidationErrorToString);
-        handleErrorResponse("err.invalid_request", details, res, 422);
+        // const details = errors.map(mapValidationErrorToString);
+        const details = 'db error!';
+        logAndThrowUserError("err.invalid_request", details);
     } else {
         next();
     }
 };
 
-const mapValidationErrorToString = (error: MappedError) => {
-    return `${error.msg} '${error.value}' in ${error.location}`;
-};
+// const mapValidationErrorToString = (error: MappedError) => {
+//     return `${error.msg} '${error.value}' in ${error.location}`;
+// };

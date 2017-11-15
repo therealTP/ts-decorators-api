@@ -8,11 +8,10 @@ import { db } from './services/db';
 
 $log.info('Initialize server');
 
-// Connect to DB
-if (process.env.ENV !== 'TEST') db.connect();
-
-new Server().start().then(() => {
+export const server = new Server().start().then(() => {
     $log.info('Server started...');
+    // Connect to DB, non-blocking
+    if (process.env.ENV !== 'TEST') db.connect();
 })
 .catch((err) => {
     $log.error(err);

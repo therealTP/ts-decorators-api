@@ -9,8 +9,8 @@ process.env.ENV = 'TEST';
 import * as mocha from 'mocha';
 import * as chai from 'chai';
 import chaiHttp = require('chai-http');
-import { server } from './../index';
-import { db } from './../database/db';
+import { server } from './../src/app';
+import { db } from './../src/services/db';
 import { NewsSource } from './../api/resources/NewsSource/NewsSource';
 
 let expect = chai.expect;
