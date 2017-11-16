@@ -19,6 +19,7 @@ const rootDir = Path.resolve(__dirname);
         `${rootDir}/middlewares/**/**.js`
     ]
 })
+
 export class Server extends ServerLoader {
 
     /**

@@ -4,11 +4,12 @@
   "description": "",
   "main": "app.ts",
   "scripts": {
-    "build": "rm -rf dist/* && npm run tsc",
+    "build": "npm install && npm run tsc",
+    "rebuild": "rm -rf node_modules/* && npm install && rm -rf dist/* && npm run tsc",
     "coverage": "npm run test-cov && npm run test-remap",
-    "postinstall": "npm run build",
     "tslint": "tslint ./*.ts ./lib/*.ts",
-    "test": "mocha --reporter spec --check-leaks --bail test/",
+    "pretest": "tsc",
+    "test": "mocha --check-leaks dist/test/ --recursive --watch",
     "tsc": "tsc  --project tsconfig.json",
     "tsc:w": "tsc -w",
     "start": "concurrently \"npm run tsc:w\" \"nodemon dist/app.js --ignore *.ts\""
@@ -43,10 +44,14 @@
     "@types/mocha": "^2.2.44",
     "@types/node": "^8.0.13",
     "chai": "^4.1.2",
+    "chai-as-promised": "^7.1.1",
     "chai-http": "^3.0.0",
     "concurrently": "^3.1.0",
     "mocha": "^3.5.3",
     "mocha-typescript": "^1.1.8",
-    "nodemon": "^1.11.0"
+    "nodemon": "^1.11.0",
+    "sinon": "^4.1.2",
+    "sinon-chai": "^2.14.0",
+    "ts-node": "^3.3.0"
   }
 }

@@ -28,4 +28,12 @@ export class CreateNewsSourceRequest extends AbstractCreateRequest implements IN
     @Required()
     @Enum(...CountryAbbrevEnumArr)
     country: CountryAbbrevType;
+
+    @MinLength(3)
+    @Allow(null)
+    twitterUsername: string;
+    
+    @MinLength(3)
+    @Allow(null)
+    youtubeUsername: string; 
 }

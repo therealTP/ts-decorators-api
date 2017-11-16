@@ -45,7 +45,7 @@ export const logAndThrowUserError = (code: string, details: string): void => {
 /*
 * --- DATABASE ERROR FUNCTIONS ---
 */
-export let handleDbErrorResponse = (err: any, res: Response): void => {
+export let handleDbErrorResponse = (err: any): void => {
     const details = parseDatabaseError(err.message);
     logAndThrowUserError("err.database_query_error", details);
 };

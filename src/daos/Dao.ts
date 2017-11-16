@@ -6,6 +6,7 @@ import { db } from './../services/db';
 import { DaoConfigInterface } from './DaoConfigInterface';
 import { ListQueryOptions } from './../classes/ListQueryOptions';
 import { SearchMap, FilterMap, FindMap } from './daoMaps';
+import { handleDbErrorResponse } from './../services/errors';
 
 export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequestType> {
     tableName: string;
@@ -171,17 +172,20 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
     }
     
     public async findOneById(id: string): Promise<ResourceResponseType> {
-        let row;
-        // if a custom query exists in DAO config:
-        if (this.findOneCustomQuery) {
-            // run the custom query w/ readRequest as params:
-            row = await db.query(this.findOneCustomQuery, {id});
-        } else {
-            // console.log("DB QUERY", this.tableName, {id});
-            row = await db.getTable(this.tableName).findOne({id});
+        try {
+            // if a custom query exists in DAO config:
+            let row;
+            if (this.findOneCustomQuery) {
+                // run the custom query w/ readRequest as params:
+                row = await db.query(this.findOneCustomQuery, {id});
+            } else {
+                // console.log("DB QUERY", this.tableName, {id});
+                row = await db.getTable(this.tableName).findOne({id});
+            }
+            return this.createResourceInstanceFromRow(row);
+        } catch(dbErr) {
+            handleDbErrorResponse(dbErr);
         }
-        
-        return this.createResourceInstanceFromRow(row);
     }
 
     public async create(createRequest: CreateRequestType): Promise<ResourceResponseType> {
