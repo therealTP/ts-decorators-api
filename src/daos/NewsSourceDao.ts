@@ -3,10 +3,11 @@ import { db } from './../services/db';
 import { DaoConfigInterface } from './DaoConfigInterface';
 import { Dao } from './Dao';
 import { NewsSourceResponse } from './../models/NewsSourceResponse';
+import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
 import { CreateNewsSourceRequest } from './../models/CreateNewsSourceRequest';
 import { UpdateNewsSourceRequest } from './../models/UpdateNewsSourceRequest';
 
-export class NewsSourceDao extends Dao<NewsSourceResponse, CreateNewsSourceRequest, UpdateNewsSourceRequest> {
+export class NewsSourceDao extends Dao<NewsSourceResponse, ListNewsSourceRequest, CreateNewsSourceRequest, UpdateNewsSourceRequest> {
     constructor() {
         const daoConfig: DaoConfigInterface = {
             tableName: 'news_sources',

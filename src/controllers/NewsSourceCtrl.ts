@@ -12,13 +12,15 @@ import {
     Status,
     Use
 } from "ts-express-decorators";
+
 import { AbstractController } from './AbstractController';
 import { NewsSourceDao } from './../daos/NewsSourceDao';
 import { SuccessResponse } from './../classes/SuccessResponse';
 import { NewsSourceResponse } from './../models/NewsSourceResponse';
+import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
 import { CreateNewsSourceRequest } from './../models/CreateNewsSourceRequest';
 import { UpdateNewsSourceRequest } from './../models/UpdateNewsSourceRequest';
-import { logAndThrowUserError, handleDbErrorResponse } from './../services/errors';
+import { logAndThrowUserError } from './../services/errors';
 
 @Controller("/sources")
 // @Use(AuthenticateMW)
@@ -32,29 +34,14 @@ export class NewsSourceController extends AbstractController<NewsSourceDao> {
 
     @Get("/")
     // @Authenticated()
-    async getAll(@QueryParams() queryParams: any): Promise<SuccessResponse> {
-        // let listRequest = new ListNewsSourceRequest(req.query.limit, req.query.offset, req.query.sort);
-        const searchTerm: string = queryParams.q;
-
-        // // Filter params: not search term or query options
-        // let filterParams = lo.omit(req.query, ['q', 'limit', 'offset', 'order_by']);
-
-        // const resources = await this.dao.findMany(searchTerm,);
-        const resources = ["test"];
-        
-        // if (resources) return new SuccessResponse({results: resources});
-        return new SuccessResponse({sources: resources});
+    async getAll(@QueryParams() queryParams: ListNewsSourceRequest): Promise<SuccessResponse> {
+        const sources = await this.dao.findMany(queryParams);
+        return new SuccessResponse({sources});
     }
 
     /**
-     * Example of customised call. You can use decorators to inject express object like `response` as `@Response`,
-     * `request` as `@Request` and `next` as `@Next`.
-     *
-     * Another decorator are available to access quickly to the pathParams request. `@PathParams` take an expression in
-     * first parameter.
-     * @returns {{id: any, name: string}}
+     * @returns SuccessResponse
      */
-
     @Get("/:id")
     async get(@Required() @PathParams("id") id: string): Promise<SuccessResponse> {
         const resource = await this.dao.findOneById(id);

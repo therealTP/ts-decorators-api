@@ -4,11 +4,11 @@ import * as lo from 'lodash';
 
 import { db } from './../services/db';
 import { DaoConfigInterface } from './DaoConfigInterface';
-import { ListQueryOptions } from './../classes/ListQueryOptions';
+import { ListQueryParams } from './../models/ListQueryParams';
 import { SearchMap, FilterMap, FindMap } from './daoMaps';
 import { handleDbErrorResponse } from './../services/errors';
 
-export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequestType> {
+export abstract class Dao<ResourceResponseType, ListRequestType extends ListQueryParams, CreateRequestType, UpdateRequestType> {
     tableName: string;
     searchFields: string[];
     filterFields: string[];
@@ -64,16 +64,16 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
      Used to parse/map request data from ctrl to Pogi format
      Assign defaults, restrict fields, etc. 
      */
-    private generateQueryMap(queryOptions: ListQueryOptions) {
+    private generateQueryOptions(queryOptions: ListQueryParams) {
 
-        // set defaults
+        // set limit & offset defaults:
         if (!queryOptions.offset && queryOptions.offset !== 0) queryOptions.offset = this.defaultOffset;
-        if (!queryOptions.limit && queryOptions.limit !== 0) queryOptions.limit = this.defaultLimit;
+        if (!queryOptions.limit) queryOptions.limit = this.defaultLimit;
 
         // if orderBy arr exists, remove non-matching sort fields:
-        if (queryOptions.orderBy) {
+        if (queryOptions.order_by) {
             // remove sort fields that are not options:
-            lo.remove(queryOptions.orderBy, field => {
+            lo.remove(queryOptions.order_by, field => {
                 const validField = this.sortFields.some(sortField => {
                     return field.includes(sortField);
                 });
@@ -81,7 +81,7 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
                 return !validField;
             });
         } else {
-            queryOptions.orderBy = this.defaultSort;
+            queryOptions.order_by = this.defaultSort;
         }
 
         return queryOptions;
@@ -106,14 +106,14 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
         return searchMap;
     }
 
-    private generateFilterMap(filterQuery: {}): FilterMap {
+    private generateFilterMap(listRequest: ListRequestType): FilterMap {
         const filterMap = {
             and: []
         };
 
         // for each possible filterable field:
         this.filterFields.forEach(field => {
-            const fieldVals = filterQuery[field];
+            const fieldVals = listRequest[field];
             
             // if query contains val for that field:
             if (fieldVals) {
@@ -152,21 +152,20 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
     BASIC CRUD FUNCTIONS
     More specific DAO methods defined/implemented in derived classes
     */
-    public async findMany(queryOptions: ListQueryOptions, searchTerm: string, filterFields: {}): Promise<ResourceResponseType[]> {
+    public async findMany(listRequest: ListRequestType): Promise<ResourceResponseType[]> {
         // options for query:
-        let queryMap = this.generateQueryMap(queryOptions);
-        
-        let searchMap = this.generateSearchMap(searchTerm);
-        let filterMap = this.generateFilterMap(filterFields);
-        let findMap = this.generateFindMap(searchMap, filterMap);
+        const queryOptions = this.generateQueryOptions(listRequest);
+        const searchMap = this.generateSearchMap(listRequest.q);
+        const filterMap = this.generateFilterMap(listRequest);
+        const findMap = this.generateFindMap(searchMap, filterMap);
         
         let rows;   
         // if a custom query exists in DAO config:
         if (this.findManyCustomQuery) {
             // run the custom query w/ find map as params:
-            rows = await db.query(this.findManyCustomQuery, findMap, queryMap);
+            rows = await db.query(this.findManyCustomQuery, findMap, queryOptions);
         } else {
-            rows = await db.getTable(this.tableName).find(findMap, queryMap);
+            rows = await db.getTable(this.tableName).find(findMap, queryOptions);
         }
         return rows.map(row => this.createResourceInstanceFromRow(row));
     }
@@ -189,22 +188,34 @@ export abstract class Dao<ResourceResponseType, CreateRequestType, UpdateRequest
     }
 
     public async create(createRequest: CreateRequestType): Promise<ResourceResponseType> {
-        // Right now, request data must map to DB columns (camelCase to snake_case)
-        let createData = decamelizeKeys(createRequest);
-        let created = await db.getTable(this.tableName).insertAndGet(createData);
-        return this.createResourceInstanceFromRow(created);
+        try {
+            // Right now, request data must map to DB columns (camelCase to snake_case)
+            let createData = decamelizeKeys(createRequest);
+            let created = await db.getTable(this.tableName).insertAndGet(createData);
+            return this.createResourceInstanceFromRow(created);
+        } catch(dbErr) {
+            handleDbErrorResponse(dbErr);
+        }
     }
 
     public async update(id: string, updates: UpdateRequestType): Promise<ResourceResponseType> {
-        // Right now, request data must map to DB columns (camelCase to snake_case)
-        let updateData = decamelizeKeys(updates);
-        let updated = await db.getTable(this.tableName).updateAndGetOne({id}, updateData);
-        return this.createResourceInstanceFromRow(updated);
+        try {
+            // Right now, request data must map to DB columns (camelCase to snake_case)
+            let updateData = decamelizeKeys(updates);
+            let updated = await db.getTable(this.tableName).updateAndGetOne({id}, updateData);
+            return this.createResourceInstanceFromRow(updated);
+        } catch(dbErr) {
+            handleDbErrorResponse(dbErr);
+        }
     }
 
     // Would only delete by id, so this method accepts string id
     public async delete(id: string): Promise<{}> {
-        let deleted = await db.getTable(this.tableName).delete({id});
-        return {}; 
+        try {
+            let deleted = await db.getTable(this.tableName).delete({id});
+            return {};
+        } catch(dbErr) {
+            handleDbErrorResponse(dbErr);
+        }
     }
 }
