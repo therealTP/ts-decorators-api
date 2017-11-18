@@ -5,10 +5,12 @@ import { CountryAbbrevType, CountryAbbrevEnumArr } from './../enums/CountryAbbre
 
 export class ListNewsSourceRequest extends ListQueryParams {
     @PropertyType(Boolean)
-    non_profit: boolean;
+    @PropertyName('non_profit')
+    nonProfit: boolean;
     
     @PropertyType(Boolean)
-    sells_ads: boolean;
+    @PropertyName('sells_ads')
+    sellsAds: boolean;
 
     @Enum(...CountryAbbrevEnumArr)
     countries: CountryAbbrevType[];

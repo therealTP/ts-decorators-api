@@ -1,7 +1,8 @@
 import { Required, Property, PropertyName, PropertyType, Allow } from "ts-express-decorators";
-import { MinProperties, MinLength, Minimum, Maximum, Format } from "ts-express-decorators/ajv";
+import { MinProperties, MinLength, Minimum, Maximum, Format, Default } from "ts-express-decorators/ajv";
+import { QueryOptions } from 'pogi';
 
-export class ListQueryParams {
+export class ListQueryParams implements QueryOptions {
     @PropertyType(String)
     @MinLength(2)
     q: string;
@@ -13,6 +14,10 @@ export class ListQueryParams {
     offset: number;
 
     @PropertyType(String)
-    @MinProperties(1)
-    order_by: string[];
+    @PropertyName('order_by')
+    orderBy: string;
+
+    @PropertyType(Boolean)
+    @Default(true)
+    skipUndefined: boolean;
 }

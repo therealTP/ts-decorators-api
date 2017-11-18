@@ -12,9 +12,9 @@ import {
     Status,
     Use
 } from "ts-express-decorators";
-
+import { Format } from "ts-express-decorators/ajv";
 import { AbstractController } from './AbstractController';
-import { NewsSourceDao } from './../daos/NewsSourceDao';
+import { NewsSourceDao } from './../database/NewsSourceDao';
 import { SuccessResponse } from './../classes/SuccessResponse';
 import { NewsSourceResponse } from './../models/NewsSourceResponse';
 import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
@@ -32,6 +32,10 @@ export class NewsSourceController extends AbstractController<NewsSourceDao> {
         });
     }
 
+    /**
+     * @param queryParams: ListNewsSourceRequest
+     * @returns {Promise<SuccessResponse>}
+     */
     @Get("/")
     // @Authenticated()
     async getAll(@QueryParams() queryParams: ListNewsSourceRequest): Promise<SuccessResponse> {
@@ -40,13 +44,16 @@ export class NewsSourceController extends AbstractController<NewsSourceDao> {
     }
 
     /**
-     * @returns SuccessResponse
+     * @param id: uuid
+     * @returns {Promise<SuccessResponse>}
      */
     @Get("/:id")
-    async get(@Required() @PathParams("id") id: string): Promise<SuccessResponse> {
+    async get(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
         const resource = await this.dao.findOneById(id);
         if (resource) return new SuccessResponse(resource);
-        logAndThrowUserError("err.not_found", this.resourceLabel);
+
+        // explicitly throw error if nothing found for that id
+        logAndThrowUserError("err.resource_not_found", this.resourceLabel);
     }
 
     @Post("/")
