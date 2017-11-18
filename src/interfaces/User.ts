@@ -9,4 +9,6 @@ export interface IUser {
     userType?: UserType;
     facebookId?: string;
     gmailId?: string;
+    created?: Date;
+    updated?: Date;
 }
