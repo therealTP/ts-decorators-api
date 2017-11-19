@@ -10,20 +10,26 @@ import {
     Put,
     Required,
     Status,
-    Use
+    Use,
+    UseBefore,
+    UseAfter
 } from "ts-express-decorators";
 import { Format } from "ts-express-decorators/ajv";
 import { AbstractController } from './AbstractController';
 import { UserDao } from './../database/UserDao';
+import { hashPassword, comparePasswordWithHash, generateToken } from './../services/auth';
 import { SuccessResponse } from './../classes/SuccessResponse';
 import { UserResponse } from './../models/UserResponse';
-import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
-import { CreateUserRequest } from './../models/CreateUserRequest';
+import { ListUserRequest } from './../models/ListUserRequest';
+import { RegisterUserRequest } from './../models/RegisterUserRequest';
+import { LoginUserRequest } from './../models/LoginUserRequest';
 import { UpdateNewsSourceRequest } from './../models/UpdateNewsSourceRequest';
-import { logAndThrowUserError } from './../services/errors';
+import { throwRequestError } from './../services/errors';
+import { RemoveResponsePasswordMw } from './../middlewares/RemoveResponsePassword';
+import { ValidUserToken } from './../middlewares/ValidUserToken';
+import { UserIsAdmin } from './../middlewares/UserIsAdmin';
 
 @Controller("/user")
-// @Use(AuthenticateMW)
 export class UserController extends AbstractController<UserDao> {
     constructor() {
         super({
@@ -37,8 +43,10 @@ export class UserController extends AbstractController<UserDao> {
      * @returns {Promise<SuccessResponse>}
      */
     @Get("/")
-    // @Authenticated()
-    async getAll(@QueryParams() queryParams: ListNewsSourceRequest): Promise<SuccessResponse> {
+    @UseBefore(ValidUserToken)
+    @UseBefore(UserIsAdmin)
+    @UseAfter(RemoveResponsePasswordMw)
+    async getAll(@QueryParams() queryParams: ListUserRequest): Promise<SuccessResponse> {
         const sources = await this.dao.findMany(queryParams);
         return new SuccessResponse({sources});
     }
@@ -48,23 +56,58 @@ export class UserController extends AbstractController<UserDao> {
      * @returns {Promise<SuccessResponse>}
      */
     @Get("/:id")
+    @UseBefore(ValidUserToken)
+    @Use(UserIsAdmin)
+    @UseAfter(RemoveResponsePasswordMw)
     async get(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
-        const resource = await this.dao.findOneById(id);
-        if (resource) return new SuccessResponse(resource);
+        // Make sure user ID in session/token matches id requesting
+        // OR is admin/master
+        const user = await this.dao.findOneById(id);
+        if (user) return new SuccessResponse(user);
 
         // explicitly throw error if nothing found for that id
-        logAndThrowUserError("err.resource_not_found", this.resourceLabel);
+        throwRequestError("err.user_not_found");
     }
 
-    @Post("/")
-    async post(@BodyParams() createRequest: CreateUserRequest): Promise<SuccessResponse> {
-        console.log("CREATE REQUEST", createRequest);
-
-        const createResponse = await this.dao.create(createRequest);
+    /**
+     * Only newly registering users can create user accounts
+     * @param createRequest
+     */
+    @Post("/register")
+    // @UseBefore(IsNotAuthed)
+    @UseAfter(RemoveResponsePasswordMw)
+    async register(@BodyParams() registerRequest: RegisterUserRequest): Promise<SuccessResponse> {
+        // check if user already exists:
+        const user = await this.dao.findOneByAltId(registerRequest.email);
+        if (user) throwRequestError("err.user_exists");
         
-        if (createResponse) return new SuccessResponse(createResponse);
+        // SALT pw before storing
+        registerRequest.password = await hashPassword(registerRequest.password);
+        const registerResponse = await this.dao.create(registerRequest);
+        
+        // Login at same time of registration?
+        if (registerResponse) return new SuccessResponse(registerResponse);
 
-        logAndThrowUserError("err.create_failed", this.resourceLabel);
+        throwRequestError("err.user_registration_failed");
+    }
+
+    @Post("/login")
+    // @UseBefore(IsNotAuthed)
+    async login(@BodyParams() loginRequest: LoginUserRequest): Promise<SuccessResponse> {
+        // check if user exists:\
+        const user = await this.dao.findOneByAltId(loginRequest.email);
+        if (!user) throwRequestError("err.user_login_failed");
+        
+        // compare request pw with stored pw hash:
+        const match = await comparePasswordWithHash(loginRequest.password, user.password);
+        
+        // if match, return success response & attach token
+        if (match) {
+            const token = generateToken(user);
+            return new SuccessResponse({token});
+        }
+
+        throwRequestError("err.user_login_failed");
     }
 
     // /**

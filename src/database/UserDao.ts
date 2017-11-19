@@ -2,14 +2,15 @@
 import { camelizeKeys, decamelizeKeys } from 'humps';
 
 import { db } from './../services/db';
+import { handleDbErrorResponse } from './../services/errors';
 import { DaoConfigInterface } from './DaoConfigInterface';
 import { AbstractDao } from './AbstractDao';
 import { UserResponse } from './../models/UserResponse';
-import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
-import { CreateNewsSourceRequest } from './../models/CreateNewsSourceRequest';
+import { ListUserRequest } from './../models/ListUserRequest';
+import { RegisterUserRequest } from './../models/RegisterUserRequest';
 import { UpdateNewsSourceRequest } from './../models/UpdateNewsSourceRequest';
 
-export class UserDao extends AbstractDao<UserResponse, ListNewsSourceRequest, CreateNewsSourceRequest, UpdateNewsSourceRequest> {
+export class UserDao extends AbstractDao<UserResponse, ListUserRequest, RegisterUserRequest, UpdateNewsSourceRequest> {
     constructor() {
         const daoConfig: DaoConfigInterface = {
             tableName: 'users',
@@ -20,7 +21,9 @@ export class UserDao extends AbstractDao<UserResponse, ListNewsSourceRequest, Cr
             defaultLimit: 15,
             defaultSort: ['-created']
             // findManyCustomQuery: `SELECT * FROM news_sources`,
-            // findOneCustomQuery: `SELECT name, website_url, id FROM news_sources WHERE id=:id`
+            // findOneCustomQuery: `SELECT id, full_name, email, password 
+            //                     FROM users WHERE 
+            //                     email=:id or facebook_id=:id or gmail_id=:id`
         };
         super(daoConfig);
     }
@@ -36,5 +39,20 @@ export class UserDao extends AbstractDao<UserResponse, ListNewsSourceRequest, Cr
 
         // assign camelizedRow props to resource instance
         return Object.assign(new UserResponse(), camelRow);
+    }
+
+    async findOneByAltId(altId: string) {
+        try {
+            const row = await db.getTable(this.tableName).findOne( 
+                {or: [
+                    {email: altId}, 
+                    {facebook_id: altId}, 
+                    {gmail_id: altId}
+                ]}
+            );
+            return this.mapRowToResourceInstance(row);
+        } catch(dbErr) {
+            handleDbErrorResponse(dbErr);
+        }
     }
 }

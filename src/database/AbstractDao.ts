@@ -65,14 +65,7 @@ export abstract class AbstractDao<ResourceResponseType, ListRequestType extends 
     public async findOneById(id: string): Promise<ResourceResponseType> {
         try {
             // if a custom query exists in DAO config:
-            let row;
-            if (this.findOneCustomQuery) {
-                // run the custom query w/ readRequest as params:
-                row = await db.query(this.findOneCustomQuery, {id});
-            } else {
-                // console.log("DB QUERY", this.tableName, {id});
-                row = await db.getTable(this.tableName).findOne({id});
-            }
+            const row = await db.getTable(this.tableName).findOne({id});
             return this.mapRowToResourceInstance(row);
         } catch(dbErr) {
             handleDbErrorResponse(dbErr);
@@ -90,6 +83,7 @@ export abstract class AbstractDao<ResourceResponseType, ListRequestType extends 
         }
     }
 
+    // Would only delete by id, so this method accepts string id
     public async update(id: string, updates: UpdateRequestType): Promise<ResourceResponseType> {
         try {
             // Right now, request data must map to DB columns (camelCase to snake_case)
