@@ -23,14 +23,14 @@ export class GlobalErrorHandlerMiddleware implements IMiddlewareError {
 
         if (error instanceof Exception) {
             $log.error("" + error);
-            response.status(error.status).send(toHTML(error.message + "TEST"));
+            response.status(error.status).send(toHTML(error.message));
             return next();
         }
 
         if (error instanceof UserError) {
             $log.error("" + error);
             const responseBody = new ErrorResponse(error);
-            response.status(404).json(responseBody);
+            response.status(error.status).json(responseBody);
             return next();
         }
 

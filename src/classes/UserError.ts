@@ -2,13 +2,13 @@
  * Used for surfacing error details to user or for logging
  */
 export class UserError {
-    message: string;
     code: string;
-    details: string;
+    message: string;
+    status: number;
 
-    constructor(message: string, code: string, details: string) {
-        this.message = message;
+    constructor(code: string, message: string, status: number) {
         this.code = code;
-        this.details = details;
+        this.message = message;
+        this.status = status;
     }
 }
