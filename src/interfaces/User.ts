@@ -4,7 +4,7 @@ export interface IUser {
     id?: string;
     fullName?: string;
     email?: string;
-    password?: string;
+    hash?: string;
     following?: string[];
     userType?: UserType;
     facebookId?: string;

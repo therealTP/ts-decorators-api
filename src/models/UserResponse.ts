@@ -5,6 +5,7 @@ export class UserResponse implements IUser {
     id: string;
     fullName: string;
     email: string;
+    password: string;
     following: string[];
     userType: UserType;
     facebookId: string;
