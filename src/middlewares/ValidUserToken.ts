@@ -15,9 +15,11 @@ export class ValidUserToken implements IMiddleware {
     use(@HeaderParams("Authorization") authHeader: string, @Request() request: ExpressRequest) {
         try {
             const headerToken = authHeader.replace("Bearer ", "");
+            // verification will throw err if not valid or is expired:
             const userData = verifyToken(headerToken);
             (<any>request).user = userData; 
         } catch(e) {
+            // throw auth err if fails:
             throwAuthError();
         }
     };

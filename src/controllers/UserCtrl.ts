@@ -8,12 +8,14 @@ import {
     Post,
     QueryParams,
     Put,
+    Request,
     Required,
     Status,
     Use,
     UseBefore,
     UseAfter
 } from "ts-express-decorators";
+import { Request as ExpressRequest } from 'express';
 import { Format } from "ts-express-decorators/ajv";
 import { AbstractController } from './AbstractController';
 import { UserDao } from './../database/UserDao';
@@ -29,44 +31,16 @@ import { RemoveResponsePasswordMw } from './../middlewares/RemoveResponsePasswor
 import { ValidUserToken } from './../middlewares/ValidUserToken';
 import { UserIsAdmin } from './../middlewares/UserIsAdmin';
 
-@Controller("/user")
+// TODO:
+// post user follow of news source (only own user can do this)
+// register/login with facebook / google
+// update user (only own user or admin (?) can do this)
+// deactivate user (only own user can do this)
+
+@Controller("/users")
 export class UserController extends AbstractController<UserDao> {
     constructor() {
-        super({
-            dao: new UserDao(),
-            resourceLabel: "user"
-        });
-    }
-
-    /**
-     * @param queryParams: ListNewsSourceRequest
-     * @returns {Promise<SuccessResponse>}
-     */
-    @Get("/")
-    @UseBefore(ValidUserToken)
-    @UseBefore(UserIsAdmin)
-    @UseAfter(RemoveResponsePasswordMw)
-    async getAll(@QueryParams() queryParams: ListUserRequest): Promise<SuccessResponse> {
-        const sources = await this.dao.findMany(queryParams);
-        return new SuccessResponse({sources});
-    }
-
-    /**
-     * @param id: uuid
-     * @returns {Promise<SuccessResponse>}
-     */
-    @Get("/:id")
-    @UseBefore(ValidUserToken)
-    @Use(UserIsAdmin)
-    @UseAfter(RemoveResponsePasswordMw)
-    async get(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
-        // Make sure user ID in session/token matches id requesting
-        // OR is admin/master
-        const user = await this.dao.findOneById(id);
-        if (user) return new SuccessResponse(user);
-
-        // explicitly throw error if nothing found for that id
-        throwRequestError("err.user_not_found");
+        super(new UserDao());
     }
 
     /**
@@ -110,66 +84,50 @@ export class UserController extends AbstractController<UserDao> {
         throwRequestError("err.user_login_failed");
     }
 
-    // /**
-    //  * Your method can return a Promise to respond to a request.
-    //  *
-    //  * By default, the response is sent with status 200 and is serialized in JSON.
-    //  *
-    //  * @param id
-    //  * @returns {Promise<Calendar>}
-    //  */
-    // @Get("/status/:id")
-    // @Status(202)
-    // async changeStatus(@PathParams("id") id: string): Promise<Calendar> {
-    //     const calendar = this.calendars.find(calendar => calendar.id === id);
+    @Get("/auth")
+    @UseBefore(ValidUserToken)
+    @UseAfter(RemoveResponsePasswordMw)
+    async getCurrentUserAuth(@Request() request: ExpressRequest) {
+        // at this point, user data is included as req.user
+        const user = await this.dao.findOneById((<any>request).user.id);
+        if (user) return new SuccessResponse(user);
 
-    //     if (calendar) {
-    //         return Promise.resolve(calendar);
-    //     }
+        // explicitly throw error if nothing found for current user id (shouldn't happen)
+        throwRequestError("err.user_not_found");
+    }
 
-    //     throw new NotFound("Calendar not found");
-    // }
+    // =============================================================
+    // ADMIN ROUTES
+    // =============================================================
 
-    // /**
-    //  * You can append a middleware to your route with `@Use`. Your middleware will be called before the method `getWithMiddleware`.
-    //  * @returns {{user: (number|any|string)}}
-    //  */
-    // @Get("/middleware")
-    // @Use(CustomTokenMiddleware)
-    // async getWithMiddleware(@PathParams("id") id: string): Promise<Calendar> {
+    /**
+     * @param queryParams: ListNewsSourceRequest
+     * @returns {Promise<SuccessResponse>}
+     */
+    @Get("/")
+    @UseBefore(ValidUserToken)
+    @UseBefore(UserIsAdmin)
+    @UseAfter(RemoveResponsePasswordMw)
+    async getAll(@QueryParams() queryParams: ListUserRequest): Promise<SuccessResponse> {
+        const sources = await this.dao.findMany(queryParams);
+        return new SuccessResponse({sources});
+    }
 
-    //     const calendar = this.calendars.find(calendar => calendar.id === id);
+    /**
+     * @param id: uuid
+     * @returns {Promise<SuccessResponse>}
+     */
+    @Get("/:id/details")
+    @UseBefore(ValidUserToken)
+    @Use(UserIsAdmin)
+    @UseAfter(RemoveResponsePasswordMw)
+    async getUserDetails(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
+        // Make sure user ID in session/token matches id requesting
+        // OR is admin/master
+        const user = await this.dao.findOneById(id);
+        if (user) return new SuccessResponse(user);
 
-    //     if (calendar) {
-    //         return Promise.resolve(calendar);
-    //     }
-
-    //     throw new NotFound("Calendar not found");
-    // }
-
-    // /**
-    //  *
-    //  * @param id
-    //  * @param name
-    //  * @returns {Promise<Calendar>}
-    //  */
-    // @Post("/:id")
-    // async update(@PathParams("id") @Required() id: string,
-    //              @BodyParams("name") @Required() name: string): Promise<Calendar> {
-    //     const calendar = await this.get(id);
-    //     calendar.name = name;
-    //     return calendar;
-    // }
-
-    // /**
-    //  *
-    //  * @param id
-    //  * @returns {{id: string, name: string}}
-    //  */
-    // @Delete("/")
-    // // @Authenticated()
-    // @Status(204)
-    // async remove(@BodyParams("id") @Required() id: string): Promise<any> {
-    //     this.calendars = this.calendars.filter(calendar => calendar.id === id);
-    // }
+        // explicitly throw error if nothing found for that id
+        throwRequestError("err.user_not_found");
+    }
 }

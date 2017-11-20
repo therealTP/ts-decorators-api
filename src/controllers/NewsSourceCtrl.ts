@@ -10,7 +10,8 @@ import {
     Put,
     Required,
     Status,
-    Use
+    Use,
+    UseBefore
 } from "ts-express-decorators";
 import { Format } from "ts-express-decorators/ajv";
 import { AbstractController } from './AbstractController';
@@ -20,16 +21,22 @@ import { NewsSourceResponse } from './../models/NewsSourceResponse';
 import { ListNewsSourceRequest } from './../models/ListNewsSourceRequest';
 import { CreateNewsSourceRequest } from './../models/CreateNewsSourceRequest';
 import { UpdateNewsSourceRequest } from './../models/UpdateNewsSourceRequest';
-import { logAndThrowUserError } from './../services/errors';
+import { ValidUserToken } from './../middlewares/ValidUserToken';
+import { UserIsAdmin } from './../middlewares/UserIsAdmin';
+import { throwRequestError } from './../services/errors';
+
+// TODO:
+// get news source popularity stats
+// get news source tweets
+// get news source RSS stories
+// get news source associated people
+// delete/deactivate news source (ADMIN)
 
 @Controller("/sources")
 // @Use(AuthenticateMW)
 export class NewsSourceController extends AbstractController<NewsSourceDao> {
     constructor() {
-        super({
-            dao: new NewsSourceDao(),
-            resourceLabel: "news source"
-        });
+        super(new NewsSourceDao());
     }
 
     /**
@@ -38,7 +45,7 @@ export class NewsSourceController extends AbstractController<NewsSourceDao> {
      */
     @Get("/")
     // @Authenticated()
-    async getAll(@QueryParams() queryParams: ListNewsSourceRequest): Promise<SuccessResponse> {
+    async getMany(@QueryParams() queryParams: ListNewsSourceRequest): Promise<SuccessResponse> {
         const sources = await this.dao.findMany(queryParams);
         return new SuccessResponse({sources});
     }
@@ -47,87 +54,44 @@ export class NewsSourceController extends AbstractController<NewsSourceDao> {
      * @param id: uuid
      * @returns {Promise<SuccessResponse>}
      */
-    @Get("/:id")
-    async get(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
+    @Get("/:id/details")
+    // @UseBefore(ValidApiToken)
+    async getOneById(@Required() @Format('uuid') @PathParams("id") id: string): Promise<SuccessResponse> {
         const resource = await this.dao.findOneById(id);
         if (resource) return new SuccessResponse(resource);
 
         // explicitly throw error if nothing found for that id
-        logAndThrowUserError("err.resource_not_found", this.resourceLabel);
+        throwRequestError("err.news_source_not_found");
     }
 
+    // =============================================================
+    // ADMIN ROUTES
+    // =============================================================
+    
     @Post("/")
-    async post(@BodyParams() createRequest: CreateNewsSourceRequest): Promise<SuccessResponse> {
-        console.log("CREATE REQUEST", createRequest);
-
-        // const createResponse = await this.dao.create(createRequest);
-        const createResponse = null;
-        
+    @UseBefore(ValidUserToken)
+    @UseBefore(UserIsAdmin)
+    async create(@BodyParams() createRequest: CreateNewsSourceRequest): Promise<SuccessResponse> {
+        const createResponse = await this.dao.create(createRequest);
         if (createResponse) return new SuccessResponse(createResponse);
 
-        logAndThrowUserError("err.create_failed", this.resourceLabel);
+        throwRequestError("err.create_news_source");
     }
 
-    // /**
-    //  * Your method can return a Promise to respond to a request.
-    //  *
-    //  * By default, the response is sent with status 200 and is serialized in JSON.
-    //  *
-    //  * @param id
-    //  * @returns {Promise<Calendar>}
-    //  */
-    // @Get("/status/:id")
-    // @Status(202)
-    // async changeStatus(@PathParams("id") id: string): Promise<Calendar> {
-    //     const calendar = this.calendars.find(calendar => calendar.id === id);
+    /**
+     * @param id: uuid
+     * @returns {Promise<SuccessResponse>}
+     */
+    @Put("/:id")
+    @UseBefore(ValidUserToken)
+    @UseBefore(UserIsAdmin)
+    async update(
+        @Required() @Format('uuid') @PathParams("id") id: string,
+        @BodyParams() updateRequest: UpdateNewsSourceRequest): 
+        Promise<SuccessResponse> {
+        const updateResponse = await this.dao.update(id, updateRequest);
+        if (updateResponse) return new SuccessResponse(updateResponse);
 
-    //     if (calendar) {
-    //         return Promise.resolve(calendar);
-    //     }
-
-    //     throw new NotFound("Calendar not found");
-    // }
-
-    // /**
-    //  * You can append a middleware to your route with `@Use`. Your middleware will be called before the method `getWithMiddleware`.
-    //  * @returns {{user: (number|any|string)}}
-    //  */
-    // @Get("/middleware")
-    // @Use(CustomTokenMiddleware)
-    // async getWithMiddleware(@PathParams("id") id: string): Promise<Calendar> {
-
-    //     const calendar = this.calendars.find(calendar => calendar.id === id);
-
-    //     if (calendar) {
-    //         return Promise.resolve(calendar);
-    //     }
-
-    //     throw new NotFound("Calendar not found");
-    // }
-
-    // /**
-    //  *
-    //  * @param id
-    //  * @param name
-    //  * @returns {Promise<Calendar>}
-    //  */
-    // @Post("/:id")
-    // async update(@PathParams("id") @Required() id: string,
-    //              @BodyParams("name") @Required() name: string): Promise<Calendar> {
-    //     const calendar = await this.get(id);
-    //     calendar.name = name;
-    //     return calendar;
-    // }
-
-    // /**
-    //  *
-    //  * @param id
-    //  * @returns {{id: string, name: string}}
-    //  */
-    // @Delete("/")
-    // // @Authenticated()
-    // @Status(204)
-    // async remove(@BodyParams("id") @Required() id: string): Promise<any> {
-    //     this.calendars = this.calendars.filter(calendar => calendar.id === id);
-    // }
+        throwRequestError("err.update_news_source");
+    }
 }

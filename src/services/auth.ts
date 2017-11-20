@@ -3,6 +3,13 @@ import * as jwt from 'jsonwebtoken';
 import { UserResponse } from './../models/UserResponse';
 import { ITokenData } from './../interfaces/TokenData';
 
+export {
+    hashPassword,
+    comparePasswordWithHash,
+    generateToken,
+    verifyToken
+}
+
 const hashPassword = (password) => {
     return bcrypt.hash(password, parseInt(process.env.HASH_SALT_COUNT));
 };
@@ -21,24 +28,20 @@ const generateToken = (userData: UserResponse) => {
     const token = jwt.sign(
         tokenData, 
         process.env.TOKEN_SECRET, 
-        {expiresIn: '1d'}
+        {expiresIn: process.env.TOKEN_LIFE}
     );
 
     return token;
 };
 
 const verifyToken = (token) => {
-    try {
-        const tokenData = jwt.verify(token, process.env.TOKEN_SECRET);
-        return tokenData;
-    } catch(e) {
+    // this will throw an error if decoding fails or if token expired:
+    const tokenData = jwt.verify(token, process.env.TOKEN_SECRET);
 
-    }
+    // if decoding succeeds, make sure token isn't expired:
+    // if (tokenData.exp < Date.now()) {
+    //     throw 'Error';
+    // }
+
+    return tokenData;
 };
-
-export {
-    hashPassword,
-    comparePasswordWithHash,
-    generateToken,
-    verifyToken
-}
